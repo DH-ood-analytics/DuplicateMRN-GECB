@@ -8,10 +8,17 @@ require(readxl)
 require(tidyr)
 require(dplyr)
 
-setwd("C:/Users/tvickers/Desktop/Projects/Duplicate_MRN_INQ/BIDS Feed/dat_20180201")
-iq_regactivity_ca <- read_excel("InQuicker IDX Patients.xlsx", skip=3, col_names = c("lastname", "firstname", "birthdate", "mrn", "ssn", "registrationdate",
-                                                                        "registeredby", "updateddate", "updatedby", "deleteddate", "deactivateddate",
-                                                                        "comment", "groups", "groupnames"))
+setwd("C:/Users/tvickers/Desktop/Projects/Duplicate_MRN_INQ/BIDS Feed/dat_20180228")
+
+ca_colnames <- c("lastname", "firstname", "birthdate", "mrn", "ssn", "registrationdate",
+                 "registeredby", "updateddate", "updatedby", "deleteddate", "deactivateddate",
+                 "comment", "groups", "groupnames")
+
+ca_coltypes <- c("text", "text", "numeric", "text", "text", "numeric",
+                 "text", "numeric", "text", "numeric", "numeric",
+                 "text", "text", "text")
+
+iq_regactivity_ca <- read_excel("InQuicker IDX Patients 20180228.xlsx", skip=3, col_names = ca_colnames, col_types = ca_coltypes)
 
 iq_regactivity_ca$birthdate <-  as.Date(iq_regactivity_ca$birthdate, origin = '1899-12-30')
 iq_regactivity_ca$registrationdate <-  as.Date(iq_regactivity_ca$registrationdate, origin = '1899-12-30')
@@ -24,13 +31,20 @@ iq_regactivity_ca$lastname <- trimws(iq_regactivity_ca$lastname, 'both')
 iq_regactivity_ca$fullname_reg <- paste(iq_regactivity_ca$firstname, iq_regactivity_ca$lastname)
 iq_regactivity_ca$fullname_reg <- tolower(iq_regactivity_ca$fullname_reg)
 
+#iq_regactivity_ca$updated_or_created_target 
+iq_regactivity_ca$updated_or_created_target <- ifelse(iq_regactivity_ca$registeredby=="HCOUSERINQ"|iq_regactivity_ca$updatedby=="HCOUSERINQ", "InQuicker","Not_InQuicker")
+
+TEST_justIQ <- iq_regactivity_ca %>% filter(updated_or_created_target=="InQuicker")
+
+iq_regactivity_ca <- TEST_justIQ
+
 iq_regactivity_ca <- merge(iq_regactivity_ca, date_table, by.x = "registrationdate", by.y = "day")
 
 iq_regactivity_ca$baseline_duplication <- ifelse(grepl(".*DUP USE.*", iq_regactivity_ca$comment),"duplicate", "valid")
 iq_regactivity_ca$preflagged_dupe <- ifelse(grepl(".*DUP USE.*", iq_regactivity_ca$comment), 1, 0)
 
 #1 - flatten the 'standard duplicate' file from GECB into a single table. In the previous process, this was called "INQ_CA_all_time_dupes"
-setwd("C:/Users/tvickers/Desktop/Projects/Duplicate_MRN_INQ/BIDS Feed/dat_20180201/Duplicate IDX Patients - Standard_201802")
+setwd("C:/Users/tvickers/Desktop/Projects/Duplicate_MRN_INQ/BIDS Feed/dat_20180228/Duplicate_IDX_Patients_-_Standard_201802")
 
 #get the sheetlist from the active file
 shts <- excel_sheets("Duplicate IDX Patients - Standard_201802.xlsx")
@@ -106,10 +120,10 @@ dupes_by_month <- iq_regactivity_ca %>% group_by(yyyy_mm_dd) %>% summarise(cnt =
 dupes_by_month$yyyy_mm_dd <- as.factor(dupes_by_month$yyyy_mm_dd)
 
 dupes_by_month_testrm <- iq_regactivity_ca %>% filter(is_test=="not_test") %>% group_by(yyyy_mm_dd) %>% summarise(cnt = n(),
-                                                                           base_dupe = sum(baseline_duplication=="duplicate"),
-                                                                           base_dupe_rate = (base_dupe/cnt),
-                                                                           agg_dupe = sum(aggressive_duplication=="duplicate"),
-                                                                           agg_dupe_rate = (agg_dupe/cnt)) %>% mutate(csum_base = cumsum(base_dupe), csum_agg = cumsum(agg_dupe)) %>% mutate(base_diff = c(NA, diff(csum_base)), agg_diff = c(NA, diff(csum_agg)))
+                                                                                                                  base_dupe = sum(baseline_duplication=="duplicate"),
+                                                                                                                  base_dupe_rate = (base_dupe/cnt),
+                                                                                                                  agg_dupe = sum(aggressive_duplication=="duplicate"),
+                                                                                                                  agg_dupe_rate = (agg_dupe/cnt)) %>% mutate(csum_base = cumsum(base_dupe), csum_agg = cumsum(agg_dupe)) %>% mutate(base_diff = c(NA, diff(csum_base)), agg_diff = c(NA, diff(csum_agg)))
 
 
 #write.csv(dupes_by_month, "dupes_by_month.csv", row.names=F)
@@ -118,8 +132,8 @@ dupes_by_month_testrm <- iq_regactivity_ca %>% filter(is_test=="not_test") %>% g
 #add AZ
 setwd("C:/Users/tvickers/Desktop/Projects/Duplicate_MRN_INQ/AZ Feed")
 iq_regactivity_az <- read_excel("InQuicker MRN Report January.xls", skip = 1, col_names = c("mrn", "birthdate", "gender", "lastname", "firstname", "group",
-                                                                                     "email", "citystate", "address_one", "address_two", "phonenumber",
-                                                                                     "zip", "createdon", "createdby", "mergecomment"))
+                                                                                            "email", "citystate", "address_one", "address_two", "phonenumber",
+                                                                                            "zip", "createdon", "createdby", "mergecomment"))
 iq_regactivity_az$mergecomment <- tolower(iq_regactivity_az$mergecomment)
 iq_regactivity_az$validity <- NA
 iq_regactivity_az$validity <- ifelse(is.na(iq_regactivity_az$mergecomment), "valid", "duplicate")
@@ -134,8 +148,8 @@ write.csv(iq_regactivity_az, "duplicate_mrn_report_az.csv", row.names=F)
 
 #calculate and write out the monthly breakdown
 dupes_by_month_az <- iq_regactivity_az %>% group_by(yyyy_mm_dd) %>% summarise(cnt = n(),
-                                                                           base_dupe = sum(validity=="duplicate"),
-                                                                           base_dupe_rate = (base_dupe/cnt))
+                                                                              base_dupe = sum(validity=="duplicate"),
+                                                                              base_dupe_rate = (base_dupe/cnt))
 write.csv(dupes_by_month_az, "dupes_by_month_az.csv", row.names=F)
 
 
