@@ -1,6 +1,7 @@
 script_dir <- "C:/Users/tvickers/Desktop/Projects/Duplicate_MRN_INQ"
+script_dir <- "C:/Users/tvickers/Documents/GitRepositories/DuplicateMRN-GECB"
 
-setwd("C:/Users/tvickers/Desktop/R_General")
+setwd("C:/Users/tvickers/Documents/GitRepositories/Utility_Scripts")
 source("General_fxns.R")
 cleverSource_DateTable(return_directory = script_dir)
 
@@ -8,7 +9,7 @@ require(readxl)
 require(tidyr)
 require(dplyr)
 
-setwd("C:/Users/tvickers/Desktop/Projects/Duplicate_MRN_INQ/BIDS Feed/dat_20180329")
+setwd("C:/Users/tvickers/Desktop/github_local/DuplicateMRN-GECB/input/BIDS Feed/dat_20180411")
 
 ca_colnames <- c("lastname", "firstname", "birthdate", "mrn", "ssn", "registrationdate",
                  "registeredby", "updateddate", "updatedby", "deleteddate", "deactivateddate",
@@ -18,7 +19,7 @@ ca_coltypes <- c("text", "text", "numeric", "text", "text", "numeric",
                  "text", "numeric", "text", "numeric", "numeric",
                  "text", "text", "text")
 
-iq_regactivity_ca <- read_excel("InQuicker IDX Patients 20180329.xlsx", skip=3, col_names = ca_colnames, col_types = ca_coltypes)
+iq_regactivity_ca <- read_excel("InQuicker IDX Patients 20180411.xlsx", skip=3, col_names = ca_colnames, col_types = ca_coltypes)
 
 iq_regactivity_ca$birthdate <-  as.Date(iq_regactivity_ca$birthdate, origin = '1899-12-30')
 iq_regactivity_ca$registrationdate <-  as.Date(iq_regactivity_ca$registrationdate, origin = '1899-12-30')
@@ -44,18 +45,17 @@ iq_regactivity_ca$baseline_duplication <- ifelse(!is.na(iq_regactivity_ca$commen
 iq_regactivity_ca$base_dupe_numeric <- ifelse(iq_regactivity_ca$baseline_duplication=="duplicate",1,0)
 
 #1 - flatten the 'standard duplicate' file from GECB into a single table. In the previous process, this was called "INQ_CA_all_time_dupes"
-setwd("C:/Users/tvickers/Desktop/Projects/Duplicate_MRN_INQ/BIDS Feed/dat_20180329")
+setwd("C:/Users/tvickers/Desktop/github_local/DuplicateMRN-GECB/input/BIDS Feed/dat_20180411")
 
 #get the sheetlist from the active file
-shts <- excel_sheets("Duplicate IDX Patients - Standard_201803.xlsx")
+shts <- excel_sheets("Duplicate IDX Patients - Standard_201804.xlsx")
 
 #read through data on each sheet and put into a list to be bound together afterwards.
 datalist.d1 = list()
 for(i in 1:length(shts)) {
-  dat <- read_excel("Duplicate IDX Patients - Standard_201803.xlsx", skip = 3, col_names = c("lastname", "firstname", "birthdate", "sex", "mrn", "ssn", "zip", "phone",
+  dat <- read_excel("Duplicate IDX Patients - Standard_201804.xlsx", skip = 3, col_names = c("lastname", "firstname", "birthdate", "sex", "mrn", "ssn", "zip", "phone",
                                                                                              "registrationdate", "registeredby", "updateddate", "updatedby", 
-                                                                                             "comment", "groups"),
-                    sheet = shts[i])
+                                                                                             "comment", "groups"), col_types = "text", sheet = shts[i])
   dat$sheetname <- shts[i]
   datalist.d1[[i]] <- dat
 }
@@ -69,8 +69,8 @@ table(duplicated(duplicate_idx_patients[,1:14]))
 
 #3 - done
 duplicate_idx_patients$birthdate <-  as.Date(duplicate_idx_patients$birthdate, format = '%m/%d/%Y')
-duplicate_idx_patients$registrationdate <-  as.Date(duplicate_idx_patients$registrationdate, origin = '1899-12-30')
-duplicate_idx_patients$updateddate <-  as.Date(duplicate_idx_patients$updateddate, origin = '1899-12-30')
+duplicate_idx_patients$registrationdate <-  as.Date(as.numeric(duplicate_idx_patients$registrationdate), origin = '1899-12-30')
+duplicate_idx_patients$updateddate <-  as.Date(as.numeric(duplicate_idx_patients$updateddate), origin = '1899-12-30')
 
 duplicate_idx_patients$firstname <- trimws(duplicate_idx_patients$firstname, 'both')
 duplicate_idx_patients$lastname <- trimws(duplicate_idx_patients$lastname, 'both')
@@ -101,7 +101,7 @@ iq_regactivity_ca$cumsum_baseline <- cumsum(iq_regactivity_ca$base_dupe_numeric)
 iq_regactivity_ca$cumsum_aggressive <- cumsum(iq_regactivity_ca$agg_dupe_numeric)
 
 #6 - let's see what happens when I remove obvious test records
-setwd("C:/Users/tvickers/Desktop/Projects/Duplicate_MRN_INQ/auxiliary_files")
+setwd("C:/Users/tvickers/Desktop/github_local/DuplicateMRN-GECB/input/auxiliary_files")
 names_list <- read.csv("grab_test.csv", stringsAsFactors = F)
 test_names <- names_list %>% filter(names_list$name_type=="test") %>% select(names)
 
@@ -109,7 +109,7 @@ iq_regactivity_ca$is_test <- ifelse(iq_regactivity_ca$fullname_reg %in% test_nam
 
 #table is finalized--produce a few summary statistics.
 
-setwd("C:/Users/tvickers/Desktop/Projects/Duplicate_MRN_INQ/Report")
+setwd("C:/Users/tvickers/Desktop/github_local/DuplicateMRN-GECB/output/Report")
 #protect write-out
 #write.csv(iq_regactivity_ca, "duplicate_mrn_report.csv", row.names=F)
 
@@ -157,8 +157,8 @@ IQ_duplicates <- IQ_duplicates[,1:15]
 #write.csv(IQ_duplicates, "IQ_duplicates.csv", row.names = F)
 
 #add AZ
-setwd("C:/Users/tvickers/Desktop/Projects/Duplicate_MRN_INQ/AZ Feed")
-iq_regactivity_az <- read_excel("InQuicker_MRN_Report_February.xls", skip = 1, col_names = c("mrn", "birthdate", "gender", "lastname", "firstname", "group",
+setwd("C:/Users/tvickers/Desktop/github_local/DuplicateMRN-GECB/input/AZ Feed")
+iq_regactivity_az <- read_excel("InQuicker_MRN_Report_March.xls", skip = 1, col_names = c("mrn", "birthdate", "gender", "lastname", "firstname", "group",
                                                                                             "email", "citystate", "address_one", "address_two", "phonenumber",
                                                                                             "zip", "createdon", "createdby", "mergecomment"))
 iq_regactivity_az$mergecomment <- tolower(iq_regactivity_az$mergecomment)
@@ -170,7 +170,7 @@ iq_regactivity_az$createdon <- as.Date(iq_regactivity_az$createdon)
 iq_regactivity_az <- merge(iq_regactivity_az, date_table, by.x = "createdon", by.y = "day")
 
 #write out raw data for az
-setwd("C:/Users/tvickers/Desktop/Projects/Duplicate_MRN_INQ/Report")
+setwd("C:/Users/tvickers/Desktop/github_local/DuplicateMRN-GECB/output/Report")
 #protect write-out
 #write.csv(iq_regactivity_az, "duplicate_mrn_report_az.csv", row.names=F)
 
@@ -192,6 +192,6 @@ iq_master_grped$yyyy_mm_dd <- as.Date(iq_master_grped$yyyy_mm_dd, format="%Y-%m-
 iq_master_grped <- iq_master_grped %>% filter(yyyy_mm_dd > "2015-02-01" & yyyy_mm_dd <= "2018-03-01")
 
 #write out raw data for INQ volume
-setwd("C:/Users/tvickers/Desktop/Projects/Duplicate_MRN_INQ/Report")
+setwd("C:/Users/tvickers/Desktop/github_local/DuplicateMRN-GECB/output/Report")
 #write.csv(iq_master_grped, "iq_master_grped.csv", row.names=F)
 
